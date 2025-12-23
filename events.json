@@ -1,0 +1,60 @@
+{
+  "kyobashi": {
+    "title": "Kyobashi BBQ",
+    "joinLink": "https://line.me/R/ti/g/REPLACE_ME",
+    "qrOriginal": "https://example.com/kyobashi-qr.png",
+    "qrPreview": "https://example.com/kyobashi-qr-preview.png",
+    "aliases": [
+      "kb",
+      "bbq"
+    ]
+  },
+  "newyear": {
+    "title": "New Year Party",
+    "joinLink": "https://line.me/R/ti/g/REPLACE_ME",
+    "qrOriginal": "https://example.com/newyear-qr.png",
+    "qrPreview": "https://example.com/newyear-qr-preview.png",
+    "aliases": [
+      "ny",
+      "shogatsu"
+    ]
+  },
+  "umeda": {
+    "title": "umeda",
+    "desc": "test describes",
+    "joinLink": "",
+    "qrOriginal": "",
+    "qrPreview": "",
+    "aliases": [],
+    "enabled": true
+  },
+  "osaka": {
+    "title": "osaka",
+    "desc": "testing now",
+    "joinLink": "",
+    "qrOriginal": "",
+    "qrPreview": "",
+    "aliases": [],
+    "enabled": true
+  },
+  "tokyo": {
+    "title": "tokyo",
+    "desc": "eng test",
+    "descJp": "presto",
+    "joinLink": "",
+    "qrOriginal": "",
+    "qrPreview": "",
+    "aliases": [],
+    "enabled": true
+  },
+  "newtest": {
+    "title": "newtest",
+    "desc": "join via this link ! https://line.me/ti/g/j5cjzcYTLk",
+    "descJp": "",
+    "joinLink": "",
+    "qrOriginal": "",
+    "qrPreview": "",
+    "aliases": [],
+    "enabled": true
+  }
+}
