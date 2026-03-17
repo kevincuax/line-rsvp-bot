@@ -1,6 +1,10 @@
 const { loadEvents, saveEvents } = require("./eventsStore");
 const { normalize } = require("./text");
 
+function msg(lang, en, jp) {
+  return lang === "jp" ? jp : en;
+}
+
 function findEventByKeyword(keyword, eventsMap) {
   if (!keyword) return null;
   if (eventsMap[keyword]) return { key: keyword, ...eventsMap[keyword] };
@@ -10,6 +14,51 @@ function findEventByKeyword(keyword, eventsMap) {
     if (aliases.includes(keyword)) return { key, ...ev };
   }
   return null;
+}
+
+/**
+ * Router: returns LINE reply messages array, or null to ignore.
+ */
+function handleDmText(rawText, { lang = "en", userId } = {}) {
+  
+  const text = normalize(rawText);
+  const eventsMap = loadEvents();
+  // return languagePromptMessage();
+
+  if (text.startsWith("createevent ")) {
+    return handleCreateEvent(rawText, eventsMap);
+  }
+
+  if (text.startsWith("editeventdescjp ")) {
+    return handleEditEventDesc(rawText, eventsMap, { isJp: true });
+  }
+
+  if (text.startsWith("editeventdesc ")) {
+    return handleEditEventDesc(rawText, eventsMap, { isJp: false });
+  }
+
+  if (text.startsWith("editjoinlink")) {
+    return handleEditJoinLink(rawText, eventsMap);
+  }
+
+  if (text.startsWith("editeventdatetime ")) {
+    return handleEditEventDateTime(rawText, eventsMap);
+  }
+
+  if (text.startsWith("rsvp")) {
+    return handleRsvp(rawText, eventsMap);
+  }
+  
+
+  if (text.startsWith("eventlist")) {
+    return handleRsvpList(eventsMap, { lang });
+  }
+
+  if (text.startsWith("details ")) {
+    return handleDetails(rawText, eventsMap, { lang });
+  }
+
+  return helpMessage();
 }
 
 function usageCreate() {
@@ -27,12 +76,23 @@ function usageEditDesc() {
   }];
 }
 
+function usageEditEventDateTime() {
+  return [{
+    type: "text",
+    text:
+      "Usage:\n" +
+      "editEventDateTime <keyword> <YYYY-MM-DD HH:MM-HH:MM>\n\n" +
+      "Example:\n" +
+      "editEventDateTime kyobashi 2025-03-15 18:00-22:00",
+  }];
+}
+
 function helpMessage() {
   return [{
     type: "text",
     text:
       "Send `RSVP list` to see events, or `RSVP <keyword>` to get an invite.\n\n" +
-      "MVP admin:\n- createEvent <keyword>\n- editEventDesc <keyword> <desc>\n- editEventDescJp <keyword> <desc>",
+      "MVP admin:\n- createEvent <keyword>\n- editEventDesc <keyword> <desc>\n- editEventDescJp <keyword> <desc>\n- editEventDateTime <keyword> <YYYY-MM-DD HH:MM-HH:MM>",
   }];
 }
 
@@ -79,6 +139,11 @@ function commandsHelpMessage() {
       "Example:\n" +
       "editEventDescJp kyobashi 京橋でBBQ！土曜19時〜\n\n" +
 
+      "🔹 editEventDateTime <keyword> <YYYY-MM-DD HH:MM-HH:MM>\n" +
+      "→ Sets or updates the event date and time\n" +
+      "Example:\n" +
+      "editEventDateTime kyobashi 2025-03-15 18:00-22:00\n\n" +
+
       "━━━━━━━━━━━━━━\n" +
       "ℹ️ Notes\n" +
       "━━━━━━━━━━━━━━\n\n" +
@@ -107,6 +172,7 @@ function handleCreateEvent(rawText, eventsMap) {
     qrPreview: "",
     aliases: [],
     enabled: true,
+    datetime: "",
   };
 
   saveEvents(eventsMap);
@@ -116,6 +182,7 @@ function handleCreateEvent(rawText, eventsMap) {
     text:
       `✅ Created event "${keyword}".\n\nNext:\n` +
       `- editEventDesc ${keyword} <description>\n` +
+      `- editEventDateTime ${keyword} <YYYY-MM-DD HH:MM-HH:MM>\n` +
       `- (later) add joinLink/QR in events.json`,
   }];
 }
@@ -138,6 +205,74 @@ function handleEditEventDesc(rawText, eventsMap, { isJp }) {
 
   return [{ type: "text", text: `✅ Updated ${field} for "${keyword}".` }];
 }
+function usageEditJoinLink() {
+  return [{
+    type: "text",
+    text:
+      "Usage:\n" +
+      "editJoinLink <keyword> <link>\n\n" +
+      "Example:\n" +
+      "editJoinLink kyobashi https://line.me/R/ti/g/xxxx",
+  }];
+}
+
+function handleEditJoinLink(rawText, eventsMap) {
+  const parts = rawText.trim().split(/\s+/);
+  const keyword = normalize(parts[1] || "");
+  const link = parts.slice(2).join(" ").trim();
+
+  if (!keyword || !link) {
+    return usageEditJoinLink();
+  }
+
+  if (!eventsMap[keyword]) {
+    return [{
+      type: "text",
+      text: `Event "${keyword}" does not exist. Create it first: createEvent ${keyword}`,
+    }];
+  }
+
+  eventsMap[keyword].joinLink = link;
+  saveEvents(eventsMap);
+
+  return [{
+    type: "text",
+    text: `✅ Updated join link for "${keyword}".`,
+  }];
+}
+
+function handleEditEventDateTime(rawText, eventsMap) {
+  const parts = rawText.trim().split(/\s+/);
+  const keyword = normalize(parts[1] || "");
+  const datetime = parts.slice(2).join(" ").trim();
+
+  if (!keyword || !datetime) {
+    return usageEditEventDateTime();
+  }
+
+  if (!eventsMap[keyword]) {
+    return [{
+      type: "text",
+      text: `Event "${keyword}" does not exist. Create it first: createEvent ${keyword}`,
+    }];
+  }
+
+  // Basic datetime validation (YYYY-MM-DD HH:MM-HH:MM)
+  if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}-\d{2}:\d{2}$/.test(datetime)) {
+    return [{
+      type: "text",
+      text: `Invalid datetime format. Use YYYY-MM-DD HH:MM-HH:MM, e.g., 2025-03-15 18:00-22:00.`,
+    }];
+  }
+
+  eventsMap[keyword].datetime = datetime;
+  saveEvents(eventsMap);
+
+  return [{
+    type: "text",
+    text: `✅ Updated datetime for "${keyword}" to ${datetime}.`,
+  }];
+}
 
 function handleRsvp(rawText, eventsMap) {
   const text = normalize(rawText);
@@ -147,27 +282,7 @@ function handleRsvp(rawText, eventsMap) {
   if (!second || second === "help") {
     return [{
       type: "text",
-      text: "Use:\n- `RSVP list`\n- `RSVP <keyword>` (example: `RSVP kyobashi`)",
-    }];
-  }
-
-  if (second === "list") {
-    const keys = Object.keys(eventsMap);
-
-    if (!keys.length) {
-      return [{ type: "text", text: "No events yet. Create one with: createEvent <keyword>" }];
-    }
-
-    const lines = keys.map((k) => {
-      const ev = eventsMap[k];
-      const aliasStr = (ev.aliases && ev.aliases.length) ? ` (aliases: ${ev.aliases.join(", ")})` : "";
-      const descStr = ev.desc ? ` — ${ev.desc}` : "";
-      return `- ${k}${aliasStr}${descStr}`;
-    });
-
-    return [{
-      type: "text",
-      text: `Valid keywords:\n${lines.join("\n")}\n\nSend: RSVP <keyword>`,
+      text: "Use:\n- `RSVP <keyword>` (example: `RSVP kyobashi`)\n\nTo see events: `RSVP list`",
     }];
   }
 
@@ -175,19 +290,24 @@ function handleRsvp(rawText, eventsMap) {
   const ev = findEventByKeyword(keyword, eventsMap);
 
   if (!ev) {
-    return [{ type: "text", text: `I don't recognize "${keyword}". Send \`RSVP list\` for valid keywords.` }];
+    return [{
+      type: "text",
+      text: `I don't recognize "${keyword}". Send \`RSVP list\` for valid keywords.`,
+    }];
   }
 
   const title = ev.title || ev.key;
   const link = ev.joinLink;
-  const descLine = ev.desc ? `\n${ev.desc}\n` : "\n";
 
   const messages = [{
     type: "text",
     text:
-      `✅ ${title}` +
-      descLine +
-      (link ? `Join link:\n${link}\n\n` : "Join link: (not set yet)\n\n") +
+      `✅ ${title}\n\n` +
+      (ev.datetime ? `📅 ${ev.datetime}\n\n` : '') +
+      (link
+        ? `Join link:\n${link}\n\n`
+        : "Join link: (not set yet)\n\n") +
+      (ev.datetime ? `Add to Calendar: ${process.env.BASE_URL || 'http://localhost:3000'}/calendar/${encodeURIComponent(ev.key)}\n\n` : '') +
       `(If the link doesn't work, try the QR code below.)`,
   }];
 
@@ -203,41 +323,131 @@ function handleRsvp(rawText, eventsMap) {
       originalContentUrl: ev.qrOriginal,
       previewImageUrl: ev.qrPreview,
     });
-  } else {
-    messages.push({
-      type: "text",
-      text: "QR code is not set for this event yet (for MVP, add qrOriginal/qrPreview in events.json).",
-    });
   }
 
   return messages;
 }
 
-/**
- * Router: returns LINE reply messages array, or null to ignore.
- */
-function handleDmText(rawText) {
-  const text = normalize(rawText);
-  const eventsMap = loadEvents();
+function handleDetails(rawText, eventsMap, { lang = "en" } = {}) {
+  const parts = rawText.trim().split(/\s+/);
+  const keyword = normalize(parts[1] || "");
 
-  if (text.startsWith("createevent ")) {
-    return handleCreateEvent(rawText, eventsMap);
+  if (!keyword) {
+    return [{
+      type: "text",
+      text: msg(
+        lang,
+        "Usage: details <keyword>\nExample: details kyobashi",
+        "使い方: details <keyword>\n例: details kyobashi"
+      ),
+    }];
   }
 
-  if (text.startsWith("editeventdescjp ")) {
-    return handleEditEventDesc(rawText, eventsMap, { isJp: true });
+  const ev = findEventByKeyword(keyword, eventsMap);
+
+  if (!ev) {
+    return [{
+      type: "text",
+      text: msg(
+        lang,
+        `I don't recognize "${keyword}". Send \`RSVP list\` for valid keywords.`,
+        `「${keyword}」が見つかりません。\`RSVP list\`で確認してね。`
+      ),
+    }];
   }
 
-  if (text.startsWith("editeventdesc ")) {
-    return handleEditEventDesc(rawText, eventsMap, { isJp: false });
-  }
+  const title = ev.title || ev.key;
+  const descEn = ev.desc || "";
+  const descJp = ev.descJp || "";
 
-  if (text.startsWith("rsvp")) {
-    return handleRsvp(rawText, eventsMap);
-  }
+  // Choose description based on language
+  const desc =
+    lang === "jp"
+      ? (descJp || "（日本語の説明はまだありません）")
+      : (descEn || "(No description yet)");
 
-  return helpMessage();
+  const dateStr = ev.datetime ? `📅 ${ev.datetime}\n\n` : '';
+
+  return [{
+    type: "text",
+    text: `📝 ${title}\n\n${dateStr}${desc}`,
+  }];
 }
+
+function handleRsvpList(eventsMap, { lang = "en" } = {}) {
+  const keys = Object.keys(eventsMap);
+
+  if (!keys.length) {
+    return [{
+      type: "text",
+      text: msg(
+        lang,
+        "No events yet. Create one with: createEvent <keyword>",
+        "イベントがまだありません。作成: createEvent <keyword>"
+      ),
+    }];
+  }
+
+  const chunkSize = 10;
+  const templateMessages = [];
+  for (let i = 0; i < keys.length; i += chunkSize) {
+    const chunk = keys.slice(i, i + chunkSize);
+    const columns = chunk.map((k) => {
+      const ev = eventsMap[k];
+      const desc = lang === "jp" ? (ev.descJp || ev.desc || "No description") : (ev.desc || ev.descJp || "No description");
+      const datetimeStr = ev.datetime ? `📅 ${ev.datetime}\n` : '';
+      return {
+        title: k,
+        text: `${datetimeStr}${desc}`,
+        actions: [{
+          type: "postback",
+          label: msg(lang, "RSVP", "参加"),
+          data: k,
+        }],
+      };
+    });
+    templateMessages.push({
+      type: "template",
+      altText: `Event RSVP carousel ${Math.floor(i / chunkSize) + 1}`,
+      template: {
+        type: "carousel",
+        columns: columns,
+      },
+    });
+  }
+
+  return templateMessages;
+}
+
+function languagePromptMessage() {
+  return [{
+    type: "text",
+    text: "Welcome! 😊\nEnglish or 日本語, which do you prefer?",
+    quickReply: {
+      items: [
+        {
+          type: "action",
+          action: {
+            type: "postback",
+            label: "English",
+            data: "SET_LANG=en",
+            displayText: "English",
+          },
+        },
+        {
+          type: "action",
+          action: {
+            type: "postback",
+            label: "日本語",
+            data: "SET_LANG=jp",
+            displayText: "日本語",
+          },
+        },
+      ],
+    },
+  }];
+}
+
 
 module.exports = {
   handleDmText,
@@ -245,6 +455,8 @@ module.exports = {
   findEventByKeyword,
   handleCreateEvent,
   handleEditEventDesc,
+  handleEditEventDateTime,
   handleRsvp,
   commandsHelpMessage,
+  languagePromptMessage,
 };
