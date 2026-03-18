@@ -56,7 +56,7 @@ function languagePromptMessage() {
   return [
     {
       type: "text",
-      text: "Welcome! 😊\nEnglish or 日本語, which do you prefer?",
+      text: "Welcome! 😊\nEnglish or 日本語, which do you prefer?\n\nこんにちは！😊\n英語と日本語、どちらがいいですか？",
       quickReply: {
         items: [
           {

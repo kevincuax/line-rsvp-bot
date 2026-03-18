@@ -96,7 +96,66 @@ function helpMessage() {
   }];
 }
 
-function commandsHelpMessage() {
+function commandsHelpMessage({ lang = "en" } = {}) {
+  if (lang === "jp") {
+    return [{
+      type: "text",
+      text:
+        "🤖 イベント参加ボット — 使い方\n\n" +
+
+        "このボットは、直接招待されていなくても、興味のあるイベントのLINEグループに参加できるようにするためのものです。\n\n" +
+
+        "━━━━━━━━━━━━━━\n" +
+        "📌 一般ユーザー（ボットにDM）\n" +
+        "━━━━━━━━━━━━━━\n\n" +
+
+        "🔹 RSVP list\n" +
+        "→ 参加できるイベント一覧を表示\n" +
+        "例:\n" +
+        "RSVP list\n\n" +
+
+        "🔹 RSVP <イベントキーワード>\n" +
+        "→ 該当イベントのLINEグループ招待リンク＋QRコードを取得\n" +
+        "例:\n" +
+        "RSVP kyobashi\n\n" +
+
+        "（招待されていなくても、これが一番簡単な参加方法です 👍）\n\n" +
+
+        "━━━━━━━━━━━━━━\n" +
+        "🛠 主催者向け（ボットにDM）\n" +
+        "━━━━━━━━━━━━━━\n\n" +
+
+        "🔹 createEvent <キーワード>\n" +
+        "→ 新しいイベントを作成\n" +
+        "例:\n" +
+        "createEvent kyobashi\n\n" +
+
+        "🔹 editEventDesc <キーワード> <説明>\n" +
+        "→ イベントの説明（英語）を設定/更新\n" +
+        "例:\n" +
+        "editEventDesc kyobashi BBQ near Kyobashi station, Sat 7pm\n\n" +
+
+        "🔹 editEventDescJp <キーワード> <説明>\n" +
+        "→ イベントの説明（日本語）を設定/更新\n" +
+        "例:\n" +
+        "editEventDescJp kyobashi 京橋でBBQ！土曜19時〜\n\n" +
+
+        "🔹 editEventDateTime <キーワード> <YYYY-MM-DD HH:MM-HH:MM>\n" +
+        "→ イベントの日時を設定/更新\n" +
+        "例:\n" +
+        "editEventDateTime kyobashi 2025-03-15 18:00-22:00\n\n" +
+
+        "━━━━━━━━━━━━━━\n" +
+        "ℹ️ 注意\n" +
+        "━━━━━━━━━━━━━━\n\n" +
+
+        "• すべてのコマンドはボットへのDMで送ってください\n" +
+        "• メイングループには招待リンクは投稿されません\n" +
+        "• 少しでも興味があれば、とりあえずRSVPしてOK 👍",
+    }];
+  }
+
+  // Default: English
   return [{
     type: "text",
     text:
@@ -298,16 +357,23 @@ function handleRsvp(rawText, eventsMap) {
 
   const title = ev.title || ev.key;
   const link = ev.joinLink;
+  const baseUrl = process.env.BASE_URL || "http://localhost:3000";
+  const icsUrl = `${baseUrl}/calendar/${encodeURIComponent(ev.key)}`;
+  const googleCalendarUrl = buildGoogleCalendarLink(ev);
 
   const messages = [{
     type: "text",
     text:
       `✅ ${title}\n\n` +
-      (ev.datetime ? `📅 ${ev.datetime}\n\n` : '') +
+      (ev.datetime ? `📅 ${ev.datetime}\n\n` : "") +
       (link
         ? `Join link:\n${link}\n\n`
         : "Join link: (not set yet)\n\n") +
-      (ev.datetime ? `Add to Calendar: ${process.env.BASE_URL || 'http://localhost:3000'}/calendar/${encodeURIComponent(ev.key)}\n\n` : '') +
+      (ev.datetime
+        ? `Add to CalenDWADWADAWDAWDdar:\n` +
+          (googleCalendarUrl ? `Google Calendar:\n${googleCalendarUrl}\n\n` : "") +
+          `Apple / ICS:\n${icsUrl}\n\n`
+        : "") +
       `(If the link doesn't work, try the QR code below.)`,
   }];
 
@@ -326,6 +392,32 @@ function handleRsvp(rawText, eventsMap) {
   }
 
   return messages;
+}
+
+function buildGoogleCalendarLink(ev) {
+  if (!ev?.datetime) return null;
+
+  const [date, times] = ev.datetime.split(" ");
+  if (!date || !times || !times.includes("-")) return null;
+
+  const [start, end] = times.split("-");
+  if (!start || !end) return null;
+
+  const startStr = `${date.replace(/-/g, "")}T${start.replace(":", "")}00`;
+  const endStr = `${date.replace(/-/g, "")}T${end.replace(":", "")}00`;
+
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: ev.title || ev.key || "Event",
+    dates: `${startStr}/${endStr}`,
+    details: ev.desc || ev.descJp || "Event details",
+  });
+
+  if (ev.location) {
+    params.set("location", ev.location);
+  }
+
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
 function handleDetails(rawText, eventsMap, { lang = "en" } = {}) {
