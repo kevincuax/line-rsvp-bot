@@ -26,35 +26,63 @@ function findEventByKeyword(keyword, eventsMap) {
   return null;
 }
 
+const COMMAND_ALIASES = {
+  createevent: ["createevent", "イベント作成", "作成"],
+  editeventdescjp: ["editeventdescjp", "説明編集日本語", "日本語説明編集"],
+  editeventdesc: ["editeventdesc", "説明編集"],
+  editjoinlink: ["editjoinlink", "参加リンク編集", "リンク編集"],
+  editeventdatetime: ["editeventdatetime", "日時編集", "日時変更"],
+  rsvp: ["rsvp", "参加"],
+  eventlist: ["eventlist", "一覧", "イベント一覧"],
+  details: ["details", "詳細", "説明"],
+};
+
+function canonicalizeCommand(rawText) {
+  const trimmed = rawText.trim();
+  if (!trimmed) return "";
+
+  const parts = trimmed.split(/\s+/);
+  const cmd = normalize(parts[0]);
+  const rest = parts.slice(1).join(" ");
+
+  for (const [canonical, aliases] of Object.entries(COMMAND_ALIASES)) {
+    if (aliases.map(normalize).includes(cmd)) {
+      return rest ? `${canonical} ${rest}` : canonical;
+    }
+  }
+
+  return normalize(trimmed);
+}
+
 /**
  * Router: returns LINE reply messages array, or null to ignore.
  */
 function handleDmText(rawText, { lang = "en", userId } = {}) {
-  const text = normalize(rawText);
+  const text = canonicalizeCommand(rawText);
   const eventsMap = loadEvents();
 
   if (text.startsWith("createevent ")) {
-    return handleCreateEvent(rawText, eventsMap, { lang, userId });
+    return handleCreateEvent(text, eventsMap, { lang, userId });
   }
 
   if (text.startsWith("editeventdescjp ")) {
-    return handleEditEventDesc(rawText, eventsMap, { isJp: true, lang, userId });
+    return handleEditEventDesc(text, eventsMap, { isJp: true, lang, userId });
   }
 
   if (text.startsWith("editeventdesc ")) {
-    return handleEditEventDesc(rawText, eventsMap, { isJp: false, lang, userId });
+    return handleEditEventDesc(text, eventsMap, { isJp: false, lang, userId });
   }
 
   if (text.startsWith("editjoinlink")) {
-    return handleEditJoinLink(rawText, eventsMap, { lang, userId });
+    return handleEditJoinLink(text, eventsMap, { lang, userId });
   }
 
   if (text.startsWith("editeventdatetime ")) {
-    return handleEditEventDateTime(rawText, eventsMap, { lang, userId });
+    return handleEditEventDateTime(text, eventsMap, { lang, userId });
   }
 
   if (text.startsWith("rsvp")) {
-    return handleRsvp(rawText, eventsMap, { lang, userId });
+    return handleRsvp(text, eventsMap, { lang, userId });
   }
 
   if (text.startsWith("eventlist")) {
@@ -62,7 +90,7 @@ function handleDmText(rawText, { lang = "en", userId } = {}) {
   }
 
   if (text.startsWith("details ")) {
-    return handleDetails(rawText, eventsMap, { lang, userId });
+    return handleDetails(text, eventsMap, { lang, userId });
   }
 
   return helpMessage({ lang });

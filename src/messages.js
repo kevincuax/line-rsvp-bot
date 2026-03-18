@@ -15,9 +15,8 @@ const messages = {
       "了解！これから日本語で返信するね 😊",
 
     // ===== Help / Commands =====
-
     ADMIN_ONLY:
-        "Sorry — this command is for admins only.",
+      "Sorry — this command is for admins only.",
 
     COMMANDS_TITLE:
       "🤖 Event RSVP Bot — How to use",
@@ -31,12 +30,11 @@ const messages = {
     COMMANDS_EVENTLIST:
       "eventlist\n→ Shows all upcoming events with buttons to view details or RSVP",
 
-
     COMMANDS_RSVP:
       "RSVP <event keyword>\n→ Instantly get the invite link + QR code\nExample:\nRSVP kyobashi",
 
     COMMANDS_DESCRIBE:
-      "describe <event keyword>\n→ Shows the event details (time, place, notes)\nExample:\ndescribe kyobashi",
+      "details <event keyword>\n→ Shows the event details (time, place, notes)\nExample:\ndetails kyobashi",
 
     COMMANDS_FOR_ORGANIZERS:
       "🛠 For organizers (DM the bot)",
@@ -64,7 +62,7 @@ const messages = {
       "Valid keywords:",
 
     EVENTLIST_FOOTER:
-      "Send:\n- RSVP <keyword> → join the event\n- describe <keyword> → see details",
+      "Send:\n- RSVP <keyword> → join the event\n- details <keyword> → see details",
 
     // ===== RSVP =====
     RSVP_USAGE:
@@ -84,7 +82,7 @@ const messages = {
 
     // ===== Describe =====
     DESCRIBE_USAGE:
-      "Usage: describe <keyword>\nExample: describe kyobashi",
+      "Usage: details <keyword>\nExample: details kyobashi",
 
     DESCRIBE_NOT_FOUND:
       'I don’t recognize "{keyword}". Send `eventlist` to see valid events.',
@@ -95,7 +93,7 @@ const messages = {
     // ===== Create Event =====
     CREATE_USAGE:
       "Usage: createEvent <keyword>\nExample: createEvent kyobashi",
-    
+
     CREATE_KEYWORD_NO_SPACES:
       "Event keywords can’t contain spaces.\nUse something like:\n- dubai_chocolate_party\n- dubai-chocolate-party",
 
@@ -140,9 +138,8 @@ const messages = {
       "了解！これから日本語で返信するね 😊",
 
     // ===== Help / Commands =====
-
     ADMIN_ONLY:
-        "ごめんね、このコマンドは管理者のみ使えます。",
+      "ごめんね、このコマンドは管理者のみ使えます。",
 
     COMMANDS_TITLE:
       "🤖 Event RSVP Bot — 使い方",
@@ -153,16 +150,17 @@ const messages = {
     COMMANDS_FOR_EVERYONE:
       "📌 みんな向け（ボットにDMしてね）",
 
-    // ===== Help / Commands =====
-
     COMMANDS_EVENTLIST:
-    "eventlist\n→ Shows all upcoming events with buttons to view details or RSVP",
+      "一覧\n→ 今後のイベント一覧を表示。ボタンで詳細確認や参加リンク取得ができるよ",
 
     COMMANDS_RSVP:
       "参加 <キーワード>\n→ イベントの招待リンクとQRを取得\n例:\n参加 kyobashi",
 
     COMMANDS_DESCRIBE:
-      "説明 <キーワード>\n→ イベントの詳細を見る\n例:\n説明 kyobashi",
+      "詳細 <キーワード>\n→ イベントの詳細を見る\n例:\n詳細 kyobashi",
+
+    COMMANDS_FOR_ORGANIZERS:
+      "🛠 管理者向け（ボットにDMしてね）",
 
     COMMANDS_CREATE_EVENT:
       "イベント作成 <キーワード>\n→ 新しいイベントを作成\n例:\nイベント作成 kyobashi",
@@ -176,26 +174,25 @@ const messages = {
     COMMANDS_EDIT_JOIN_LINK:
       "参加リンク編集 <キーワード> <リンク>\n→ 招待リンクを更新",
 
-
     COMMANDS_NOTES:
-      "・コマンドはすべてDMで送ってね\n・メイングループはスッキリ\n・迷ったら「参加 <キーワード>」👍",
+      "・コマンドはすべてDMで送ってね\n・メイングループはスッキリ\n・迷ったら「参加 <キーワード>」を送ってね 👍",
 
     // ===== Event List =====
     EVENTLIST_EMPTY:
-      "イベントがまだありません。\ncreateEvent <keyword> で作成してね。",
+      "イベントがまだありません。\nイベント作成 <keyword> で作成してね。",
 
     EVENTLIST_HEADER:
       "キーワード一覧:",
 
     EVENTLIST_FOOTER:
-      "送ってね:\n- RSVP <keyword> → 参加\n- describe <keyword> → 詳細を見る",
+      "送ってね:\n- 参加 <キーワード> → 参加リンクを取得\n- 詳細 <キーワード> → 詳細を見る",
 
     // ===== RSVP =====
     RSVP_USAGE:
-      "使い方:\nRSVP <キーワード>\n例: RSVP kyobashi",
+      "使い方:\n参加 <キーワード>\n例: 参加 kyobashi",
 
     RSVP_UNKNOWN_EVENT:
-      "「{keyword}」が見つかりません。\neventlist で確認してね。",
+      "「{keyword}」が見つかりません。\n一覧 で確認してね。",
 
     RSVP_JOIN_LINK_NOT_SET:
       "招待リンクはまだ設定されていません。",
@@ -208,33 +205,33 @@ const messages = {
 
     // ===== Describe =====
     DESCRIBE_USAGE:
-      "使い方: describe <キーワード>\n例: describe kyobashi",
+      "使い方: 詳細 <キーワード>\n例: 詳細 kyobashi",
 
     DESCRIBE_NOT_FOUND:
-      "「{keyword}」が見つかりません。\neventlist で確認してね。",
+      "「{keyword}」が見つかりません。\n一覧 で確認してね。",
 
     DESCRIBE_EMPTY:
       "（まだ説明がありません）",
 
     // ===== Create Event =====
     CREATE_USAGE:
-      "使い方: createEvent <キーワード>\n例: createEvent kyobashi",
-
-    CREATE_EXISTS:
-      "イベント「{keyword}」はすでに存在します。",
+      "使い方: イベント作成 <キーワード>\n例: イベント作成 kyobashi",
 
     CREATE_KEYWORD_NO_SPACES:
       "イベントのキーワードにスペースは使えません。\nこんな感じにしてね:\n- dubai_chocolate_party\n- dubai-chocolate-party",
 
+    CREATE_EXISTS:
+      "イベント「{keyword}」はすでに存在します。",
+
     CREATE_SUCCESS:
-      "✅ イベント「{keyword}」を作成しました。\n\n次にできること:\n- editEventDesc {keyword} <説明>\n- editJoinLink {keyword} <リンク>",
+      "✅ イベント「{keyword}」を作成しました。\n\n次にできること:\n- 説明編集 {keyword} <説明>\n- 参加リンク編集 {keyword} <リンク>",
 
     // ===== Edit Description =====
     EDIT_DESC_USAGE:
-      "使い方:\neditEventDesc <キーワード> <説明>\neditEventDescJp <キーワード> <説明>",
+      "使い方:\n説明編集 <キーワード> <説明>\n説明編集日本語 <キーワード> <説明>",
 
     EDIT_EVENT_NOT_FOUND:
-      "イベント「{keyword}」が見つかりません。\n先に作成してね: createEvent {keyword}",
+      "イベント「{keyword}」が見つかりません。\n先に作成してね: イベント作成 {keyword}",
 
     EDIT_DESC_SUCCESS:
       "✅ イベント説明を更新しました。",
@@ -244,7 +241,7 @@ const messages = {
 
     // ===== Edit Join Link =====
     EDIT_JOIN_LINK_USAGE:
-      "使い方:\neditJoinLink <キーワード> <リンク>",
+      "使い方:\n参加リンク編集 <キーワード> <リンク>",
 
     EDIT_JOIN_LINK_SUCCESS:
       "✅ 招待リンクを更新しました。",
