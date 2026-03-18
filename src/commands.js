@@ -1,8 +1,18 @@
 const { loadEvents, saveEvents } = require("./eventsStore");
 const { normalize } = require("./text");
+const { t } = require("./i18n");
 
 function msg(lang, en, jp) {
   return lang === "jp" ? jp : en;
+}
+
+// Helper: use i18n key if it exists, otherwise fall back
+function tt(lang, key, vars = {}, fallbackEn = key, fallbackJp = key) {
+  const result = t(lang, key, vars);
+  if (result === key) {
+    return msg(lang, fallbackEn, fallbackJp);
+  }
+  return result;
 }
 
 function findEventByKeyword(keyword, eventsMap) {
@@ -20,206 +30,113 @@ function findEventByKeyword(keyword, eventsMap) {
  * Router: returns LINE reply messages array, or null to ignore.
  */
 function handleDmText(rawText, { lang = "en", userId } = {}) {
-  
   const text = normalize(rawText);
   const eventsMap = loadEvents();
-  // return languagePromptMessage();
 
   if (text.startsWith("createevent ")) {
-    return handleCreateEvent(rawText, eventsMap);
+    return handleCreateEvent(rawText, eventsMap, { lang, userId });
   }
 
   if (text.startsWith("editeventdescjp ")) {
-    return handleEditEventDesc(rawText, eventsMap, { isJp: true });
+    return handleEditEventDesc(rawText, eventsMap, { isJp: true, lang, userId });
   }
 
   if (text.startsWith("editeventdesc ")) {
-    return handleEditEventDesc(rawText, eventsMap, { isJp: false });
+    return handleEditEventDesc(rawText, eventsMap, { isJp: false, lang, userId });
   }
 
   if (text.startsWith("editjoinlink")) {
-    return handleEditJoinLink(rawText, eventsMap);
+    return handleEditJoinLink(rawText, eventsMap, { lang, userId });
   }
 
   if (text.startsWith("editeventdatetime ")) {
-    return handleEditEventDateTime(rawText, eventsMap);
+    return handleEditEventDateTime(rawText, eventsMap, { lang, userId });
   }
 
   if (text.startsWith("rsvp")) {
-    return handleRsvp(rawText, eventsMap);
+    return handleRsvp(rawText, eventsMap, { lang, userId });
   }
-  
 
   if (text.startsWith("eventlist")) {
-    return handleRsvpList(eventsMap, { lang });
+    return handleRsvpList(eventsMap, { lang, userId });
   }
 
   if (text.startsWith("details ")) {
-    return handleDetails(rawText, eventsMap, { lang });
+    return handleDetails(rawText, eventsMap, { lang, userId });
   }
 
-  return helpMessage();
+  return helpMessage({ lang });
 }
 
-function usageCreate() {
-  return [{ type: "text", text: "Usage: createEvent <keyword>\nExample: createEvent kyobashi" }];
+function usageCreate(lang = "en") {
+  return [{ type: "text", text: t(lang, "CREATE_USAGE") }];
 }
 
-function usageEditDesc() {
+function usageEditDesc(lang = "en") {
+  return [{ type: "text", text: t(lang, "EDIT_DESC_USAGE") }];
+}
+
+function usageEditJoinLink(lang = "en") {
+  return [{ type: "text", text: t(lang, "EDIT_JOIN_LINK_USAGE") }];
+}
+
+function usageEditEventDateTime(lang = "en") {
   return [{
     type: "text",
-    text:
-      "Usage:\n" +
-      "- editEventDesc <keyword> <description>\n" +
-      "- editEventDescJp <keyword> <description>\n\n" +
-      "Example: editEventDesc kyobashi Bring snacks + drinks",
+    text: tt(
+      lang,
+      "EDIT_DATETIME_USAGE",
+      {},
+      "Usage:\neditEventDateTime <keyword> <YYYY-MM-DD HH:MM-HH:MM>\n\nExample:\neditEventDateTime kyobashi 2025-03-15 18:00-22:00",
+      "使い方:\neditEventDateTime <キーワード> <YYYY-MM-DD HH:MM-HH:MM>\n\n例:\neditEventDateTime kyobashi 2025-03-15 18:00-22:00"
+    ),
   }];
 }
 
-function usageEditEventDateTime() {
-  return [{
-    type: "text",
-    text:
-      "Usage:\n" +
-      "editEventDateTime <keyword> <YYYY-MM-DD HH:MM-HH:MM>\n\n" +
-      "Example:\n" +
-      "editEventDateTime kyobashi 2025-03-15 18:00-22:00",
-  }];
-}
-
-function helpMessage() {
-  return [{
-    type: "text",
-    text:
-      "Send `RSVP list` to see events, or `RSVP <keyword>` to get an invite.\n\n" +
-      "MVP admin:\n- createEvent <keyword>\n- editEventDesc <keyword> <desc>\n- editEventDescJp <keyword> <desc>\n- editEventDateTime <keyword> <YYYY-MM-DD HH:MM-HH:MM>",
-  }];
+function helpMessage({ lang = "en" } = {}) {
+  return [{ type: "text", text: t(lang, "UNKNOWN_COMMAND") }];
 }
 
 function commandsHelpMessage({ lang = "en" } = {}) {
-  if (lang === "jp") {
-    return [{
-      type: "text",
-      text:
-        "🤖 イベント参加ボット — 使い方\n\n" +
+  const text = [
+    t(lang, "COMMANDS_TITLE"),
+    "",
+    t(lang, "COMMANDS_DESCRIPTION"),
+    "",
+    t(lang, "COMMANDS_FOR_EVERYONE"),
+    "",
+    t(lang, "COMMANDS_EVENTLIST"),
+    "",
+    t(lang, "COMMANDS_RSVP"),
+    "",
+    t(lang, "COMMANDS_DESCRIBE"),
+    "",
+    t(lang, "COMMANDS_FOR_ORGANIZERS"),
+    "",
+    t(lang, "COMMANDS_CREATE_EVENT"),
+    "",
+    t(lang, "COMMANDS_EDIT_DESC"),
+    "",
+    t(lang, "COMMANDS_EDIT_DESC_JP"),
+    "",
+    t(lang, "COMMANDS_EDIT_JOIN_LINK"),
+    "",
+    t(lang, "COMMANDS_NOTES"),
+  ].join("\n");
 
-        "このボットは、直接招待されていなくても、興味のあるイベントのLINEグループに参加できるようにするためのものです。\n\n" +
-
-        "━━━━━━━━━━━━━━\n" +
-        "📌 一般ユーザー（ボットにDM）\n" +
-        "━━━━━━━━━━━━━━\n\n" +
-
-        "🔹 RSVP list\n" +
-        "→ 参加できるイベント一覧を表示\n" +
-        "例:\n" +
-        "RSVP list\n\n" +
-
-        "🔹 RSVP <イベントキーワード>\n" +
-        "→ 該当イベントのLINEグループ招待リンク＋QRコードを取得\n" +
-        "例:\n" +
-        "RSVP kyobashi\n\n" +
-
-        "（招待されていなくても、これが一番簡単な参加方法です 👍）\n\n" +
-
-        "━━━━━━━━━━━━━━\n" +
-        "🛠 主催者向け（ボットにDM）\n" +
-        "━━━━━━━━━━━━━━\n\n" +
-
-        "🔹 createEvent <キーワード>\n" +
-        "→ 新しいイベントを作成\n" +
-        "例:\n" +
-        "createEvent kyobashi\n\n" +
-
-        "🔹 editEventDesc <キーワード> <説明>\n" +
-        "→ イベントの説明（英語）を設定/更新\n" +
-        "例:\n" +
-        "editEventDesc kyobashi BBQ near Kyobashi station, Sat 7pm\n\n" +
-
-        "🔹 editEventDescJp <キーワード> <説明>\n" +
-        "→ イベントの説明（日本語）を設定/更新\n" +
-        "例:\n" +
-        "editEventDescJp kyobashi 京橋でBBQ！土曜19時〜\n\n" +
-
-        "🔹 editEventDateTime <キーワード> <YYYY-MM-DD HH:MM-HH:MM>\n" +
-        "→ イベントの日時を設定/更新\n" +
-        "例:\n" +
-        "editEventDateTime kyobashi 2025-03-15 18:00-22:00\n\n" +
-
-        "━━━━━━━━━━━━━━\n" +
-        "ℹ️ 注意\n" +
-        "━━━━━━━━━━━━━━\n\n" +
-
-        "• すべてのコマンドはボットへのDMで送ってください\n" +
-        "• メイングループには招待リンクは投稿されません\n" +
-        "• 少しでも興味があれば、とりあえずRSVPしてOK 👍",
-    }];
-  }
-
-  // Default: English
-  return [{
-    type: "text",
-    text:
-      "🤖 Event RSVP Bot — How to use\n\n" +
-
-      "This bot helps you get invited to event LINE groups if you’re interested but weren’t directly invited.\n\n" +
-
-      "━━━━━━━━━━━━━━\n" +
-      "📌 For everyone (DM the bot)\n" +
-      "━━━━━━━━━━━━━━\n\n" +
-
-      "🔹 RSVP list\n" +
-      "→ Shows all upcoming events you can join\n" +
-      "Example:\n" +
-      "RSVP list\n\n" +
-
-      "🔹 RSVP <event keyword>\n" +
-      "→ Instantly get the invite link + QR code for that event’s LINE group\n" +
-      "Example:\n" +
-      "RSVP kyobashi\n\n" +
-
-      "(If you didn’t get invited manually, this is the easiest way to join 👍)\n\n" +
-
-      "━━━━━━━━━━━━━━\n" +
-      "🛠 For organizers (DM the bot)\n" +
-      "━━━━━━━━━━━━━━\n\n" +
-
-      "🔹 createEvent <keyword>\n" +
-      "→ Creates a new event people can RSVP to\n" +
-      "Example:\n" +
-      "createEvent kyobashi\n\n" +
-
-      "🔹 editEventDesc <keyword> <description>\n" +
-      "→ Sets or updates the event description (English)\n" +
-      "Example:\n" +
-      "editEventDesc kyobashi BBQ near Kyobashi station, Sat 7pm\n\n" +
-
-      "🔹 editEventDescJp <keyword> <description>\n" +
-      "→ Sets or updates the event description (Japanese)\n" +
-      "Example:\n" +
-      "editEventDescJp kyobashi 京橋でBBQ！土曜19時〜\n\n" +
-
-      "🔹 editEventDateTime <keyword> <YYYY-MM-DD HH:MM-HH:MM>\n" +
-      "→ Sets or updates the event date and time\n" +
-      "Example:\n" +
-      "editEventDateTime kyobashi 2025-03-15 18:00-22:00\n\n" +
-
-      "━━━━━━━━━━━━━━\n" +
-      "ℹ️ Notes\n" +
-      "━━━━━━━━━━━━━━\n\n" +
-
-      "• All commands should be sent via DM to the bot\n" +
-      "• The main group stays clean — no invite links posted\n" +
-      "• If you’re interested but unsure, just RSVP 👍",
-  }];
+  return [{ type: "text", text }];
 }
 
-
-function handleCreateEvent(rawText, eventsMap) {
+function handleCreateEvent(rawText, eventsMap, { lang = "en" } = {}) {
   const keyword = normalize(rawText.split(/\s+/)[1] || "");
-  if (!keyword) return usageCreate();
+  if (!keyword) return usageCreate(lang);
+
+  if (keyword.includes(" ")) {
+    return [{ type: "text", text: t(lang, "CREATE_KEYWORD_NO_SPACES") }];
+  }
 
   if (eventsMap[keyword]) {
-    return [{ type: "text", text: `Event "${keyword}" already exists.` }];
+    return [{ type: "text", text: t(lang, "CREATE_EXISTS", { keyword }) }];
   }
 
   eventsMap[keyword] = {
@@ -238,23 +155,19 @@ function handleCreateEvent(rawText, eventsMap) {
 
   return [{
     type: "text",
-    text:
-      `✅ Created event "${keyword}".\n\nNext:\n` +
-      `- editEventDesc ${keyword} <description>\n` +
-      `- editEventDateTime ${keyword} <YYYY-MM-DD HH:MM-HH:MM>\n` +
-      `- (later) add joinLink/QR in events.json`,
+    text: t(lang, "CREATE_SUCCESS", { keyword }),
   }];
 }
 
-function handleEditEventDesc(rawText, eventsMap, { isJp }) {
+function handleEditEventDesc(rawText, eventsMap, { isJp, lang = "en" } = {}) {
   const parts = rawText.trim().split(" ");
   const keyword = normalize(parts[1] || "");
   const desc = parts.slice(2).join(" ").trim();
 
-  if (!keyword || !desc) return usageEditDesc();
+  if (!keyword || !desc) return usageEditDesc(lang);
 
   if (!eventsMap[keyword]) {
-    return [{ type: "text", text: `Event "${keyword}" does not exist. Create it first: createEvent ${keyword}` }];
+    return [{ type: "text", text: t(lang, "EDIT_EVENT_NOT_FOUND", { keyword }) }];
   }
 
   const field = isJp ? "descJp" : "desc";
@@ -262,33 +175,23 @@ function handleEditEventDesc(rawText, eventsMap, { isJp }) {
 
   saveEvents(eventsMap);
 
-  return [{ type: "text", text: `✅ Updated ${field} for "${keyword}".` }];
-}
-function usageEditJoinLink() {
   return [{
     type: "text",
-    text:
-      "Usage:\n" +
-      "editJoinLink <keyword> <link>\n\n" +
-      "Example:\n" +
-      "editJoinLink kyobashi https://line.me/R/ti/g/xxxx",
+    text: t(lang, isJp ? "EDIT_DESC_JP_SUCCESS" : "EDIT_DESC_SUCCESS", { keyword }),
   }];
 }
 
-function handleEditJoinLink(rawText, eventsMap) {
+function handleEditJoinLink(rawText, eventsMap, { lang = "en" } = {}) {
   const parts = rawText.trim().split(/\s+/);
   const keyword = normalize(parts[1] || "");
   const link = parts.slice(2).join(" ").trim();
 
   if (!keyword || !link) {
-    return usageEditJoinLink();
+    return usageEditJoinLink(lang);
   }
 
   if (!eventsMap[keyword]) {
-    return [{
-      type: "text",
-      text: `Event "${keyword}" does not exist. Create it first: createEvent ${keyword}`,
-    }];
+    return [{ type: "text", text: t(lang, "EDIT_EVENT_NOT_FOUND", { keyword }) }];
   }
 
   eventsMap[keyword].joinLink = link;
@@ -296,31 +199,33 @@ function handleEditJoinLink(rawText, eventsMap) {
 
   return [{
     type: "text",
-    text: `✅ Updated join link for "${keyword}".`,
+    text: t(lang, "EDIT_JOIN_LINK_SUCCESS", { keyword }),
   }];
 }
 
-function handleEditEventDateTime(rawText, eventsMap) {
+function handleEditEventDateTime(rawText, eventsMap, { lang = "en" } = {}) {
   const parts = rawText.trim().split(/\s+/);
   const keyword = normalize(parts[1] || "");
   const datetime = parts.slice(2).join(" ").trim();
 
   if (!keyword || !datetime) {
-    return usageEditEventDateTime();
+    return usageEditEventDateTime(lang);
   }
 
   if (!eventsMap[keyword]) {
-    return [{
-      type: "text",
-      text: `Event "${keyword}" does not exist. Create it first: createEvent ${keyword}`,
-    }];
+    return [{ type: "text", text: t(lang, "EDIT_EVENT_NOT_FOUND", { keyword }) }];
   }
 
-  // Basic datetime validation (YYYY-MM-DD HH:MM-HH:MM)
   if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}-\d{2}:\d{2}$/.test(datetime)) {
     return [{
       type: "text",
-      text: `Invalid datetime format. Use YYYY-MM-DD HH:MM-HH:MM, e.g., 2025-03-15 18:00-22:00.`,
+      text: tt(
+        lang,
+        "EDIT_DATETIME_INVALID",
+        {},
+        "Invalid datetime format. Use YYYY-MM-DD HH:MM-HH:MM, e.g., 2025-03-15 18:00-22:00.",
+        "日時の形式が正しくありません。YYYY-MM-DD HH:MM-HH:MM を使ってね。例: 2025-03-15 18:00-22:00"
+      ),
     }];
   }
 
@@ -329,20 +234,23 @@ function handleEditEventDateTime(rawText, eventsMap) {
 
   return [{
     type: "text",
-    text: `✅ Updated datetime for "${keyword}" to ${datetime}.`,
+    text: tt(
+      lang,
+      "EDIT_DATETIME_SUCCESS",
+      { keyword, datetime },
+      `✅ Updated datetime for "${keyword}" to ${datetime}.`,
+      `✅ 「${keyword}」の日時を ${datetime} に更新しました。`
+    ),
   }];
 }
 
-function handleRsvp(rawText, eventsMap) {
+function handleRsvp(rawText, eventsMap, { lang = "en" } = {}) {
   const text = normalize(rawText);
   const parts = text.split(" ");
   const second = parts[1];
 
   if (!second || second === "help") {
-    return [{
-      type: "text",
-      text: "Use:\n- `RSVP <keyword>` (example: `RSVP kyobashi`)\n\nTo see events: `RSVP list`",
-    }];
+    return [{ type: "text", text: t(lang, "RSVP_USAGE") }];
   }
 
   const keyword = second;
@@ -351,7 +259,7 @@ function handleRsvp(rawText, eventsMap) {
   if (!ev) {
     return [{
       type: "text",
-      text: `I don't recognize "${keyword}". Send \`RSVP list\` for valid keywords.`,
+      text: t(lang, "RSVP_UNKNOWN_EVENT", { keyword }),
     }];
   }
 
@@ -361,20 +269,30 @@ function handleRsvp(rawText, eventsMap) {
   const icsUrl = `${baseUrl}/calendar/${encodeURIComponent(ev.key)}`;
   const googleCalendarUrl = buildGoogleCalendarLink(ev);
 
+  const joinBlock = link
+    ? `${t(lang, "RSVP_JOIN_MESSAGE")}\n${link}\n\n`
+    : `${t(lang, "RSVP_JOIN_LINK_NOT_SET")}\n\n`;
+
+  const calendarBlock = ev.datetime
+    ? msg(
+        lang,
+        `Add to Calendar:\n` +
+          (googleCalendarUrl ? `Google Calendar:\n${googleCalendarUrl}\n\n` : "") +
+          `Apple Calendar (.ics):\n${icsUrl}\n\n`,
+        `カレンダーに追加:\n` +
+          (googleCalendarUrl ? `Googleカレンダー:\n${googleCalendarUrl}\n\n` : "") +
+          `Apple Calendar (.ics):\n${icsUrl}\n\n`
+      )
+    : "";
+
   const messages = [{
     type: "text",
     text:
       `✅ ${title}\n\n` +
       (ev.datetime ? `📅 ${ev.datetime}\n\n` : "") +
-      (link
-        ? `Join link:\n${link}\n\n`
-        : "Join link: (not set yet)\n\n") +
-      (ev.datetime
-        ? `Add to CalenDWADWADAWDAWDdar:\n` +
-          (googleCalendarUrl ? `Google Calendar:\n${googleCalendarUrl}\n\n` : "") +
-          `Apple / ICS:\n${icsUrl}\n\n`
-        : "") +
-      `(If the link doesn't work, try the QR code below.)`,
+      joinBlock +
+      calendarBlock +
+      t(lang, "RSVP_QR_FALLBACK"),
   }];
 
   const hasQr =
@@ -425,14 +343,7 @@ function handleDetails(rawText, eventsMap, { lang = "en" } = {}) {
   const keyword = normalize(parts[1] || "");
 
   if (!keyword) {
-    return [{
-      type: "text",
-      text: msg(
-        lang,
-        "Usage: details <keyword>\nExample: details kyobashi",
-        "使い方: details <keyword>\n例: details kyobashi"
-      ),
-    }];
+    return [{ type: "text", text: t(lang, "DESCRIBE_USAGE") }];
   }
 
   const ev = findEventByKeyword(keyword, eventsMap);
@@ -440,11 +351,7 @@ function handleDetails(rawText, eventsMap, { lang = "en" } = {}) {
   if (!ev) {
     return [{
       type: "text",
-      text: msg(
-        lang,
-        `I don't recognize "${keyword}". Send \`RSVP list\` for valid keywords.`,
-        `「${keyword}」が見つかりません。\`RSVP list\`で確認してね。`
-      ),
+      text: t(lang, "DESCRIBE_NOT_FOUND", { keyword }),
     }];
   }
 
@@ -452,13 +359,12 @@ function handleDetails(rawText, eventsMap, { lang = "en" } = {}) {
   const descEn = ev.desc || "";
   const descJp = ev.descJp || "";
 
-  // Choose description based on language
   const desc =
     lang === "jp"
-      ? (descJp || "（日本語の説明はまだありません）")
-      : (descEn || "(No description yet)");
+      ? (descJp || t(lang, "DESCRIBE_EMPTY"))
+      : (descEn || t(lang, "DESCRIBE_EMPTY"));
 
-  const dateStr = ev.datetime ? `📅 ${ev.datetime}\n\n` : '';
+  const dateStr = ev.datetime ? `📅 ${ev.datetime}\n\n` : "";
 
   return [{
     type: "text",
@@ -470,27 +376,27 @@ function handleRsvpList(eventsMap, { lang = "en" } = {}) {
   const keys = Object.keys(eventsMap);
 
   if (!keys.length) {
-    return [{
-      type: "text",
-      text: msg(
-        lang,
-        "No events yet. Create one with: createEvent <keyword>",
-        "イベントがまだありません。作成: createEvent <keyword>"
-      ),
-    }];
+    return [{ type: "text", text: t(lang, "EVENTLIST_EMPTY") }];
   }
 
   const chunkSize = 10;
   const templateMessages = [];
+
   for (let i = 0; i < keys.length; i += chunkSize) {
     const chunk = keys.slice(i, i + chunkSize);
+
     const columns = chunk.map((k) => {
       const ev = eventsMap[k];
-      const desc = lang === "jp" ? (ev.descJp || ev.desc || "No description") : (ev.desc || ev.descJp || "No description");
-      const datetimeStr = ev.datetime ? `📅 ${ev.datetime}\n` : '';
+      const desc =
+        lang === "jp"
+          ? (ev.descJp || ev.desc || t(lang, "DESCRIBE_EMPTY"))
+          : (ev.desc || ev.descJp || t(lang, "DESCRIBE_EMPTY"));
+
+      const datetimeStr = ev.datetime ? `📅 ${ev.datetime}\n` : "";
+
       return {
         title: k,
-        text: `${datetimeStr}${desc}`,
+        text: `${datetimeStr}${desc}`.slice(0, 60),
         actions: [{
           type: "postback",
           label: msg(lang, "RSVP", "参加"),
@@ -498,12 +404,13 @@ function handleRsvpList(eventsMap, { lang = "en" } = {}) {
         }],
       };
     });
+
     templateMessages.push({
       type: "template",
       altText: `Event RSVP carousel ${Math.floor(i / chunkSize) + 1}`,
       template: {
         type: "carousel",
-        columns: columns,
+        columns,
       },
     });
   }
@@ -514,7 +421,7 @@ function handleRsvpList(eventsMap, { lang = "en" } = {}) {
 function languagePromptMessage() {
   return [{
     type: "text",
-    text: "Welcome! 😊\nEnglish or 日本語, which do you prefer?",
+    text: t("en", "LANGUAGE_PROMPT"),
     quickReply: {
       items: [
         {
@@ -540,10 +447,8 @@ function languagePromptMessage() {
   }];
 }
 
-
 module.exports = {
   handleDmText,
-  // exporting these is optional, but helpful for unit tests later:
   findEventByKeyword,
   handleCreateEvent,
   handleEditEventDesc,
