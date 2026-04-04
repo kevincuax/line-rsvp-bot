@@ -19,10 +19,7 @@ const messages = {
       "Sorry — this command is for admins only.",
 
     COMMANDS_TITLE:
-      "🤖 Event RSVP Bot — How to use",
-
-    COMMANDS_DESCRIPTION:
-      "This bot helps you get invited to event LINE groups if you’re interested but weren’t directly invited.",
+      "🤖 Event RSVP Bot — How to use",    
 
     COMMANDS_FOR_EVERYONE:
       "📌 For everyone (DM the bot)",
@@ -50,6 +47,12 @@ const messages = {
 
     COMMANDS_EDIT_JOIN_LINK:
       "editJoinLink <keyword> <link>\n→ Update the LINE invite link",
+
+    COMMANDS_DESCRIPTION:
+      "Press the “Events” button in the menu below to see upcoming events!\n\nIf you find something you’re interested in, tap “RSVP” to get the link and details.\n\nThen just open the RSVP link to join the LINE group 👍",
+
+    COMMANDS_EDIT_DATETIME:
+      "editEventDateTime <keyword> <YYYY-MM-DD HH:MM-HH:MM>\n→ Update event date and time\nExample:\neditEventDateTime kyobashi 2025-03-15 18:00-22:00",
 
     COMMANDS_NOTES:
       "• All commands should be sent via DM\n• The main group stays clean\n• If you’re interested but unsure, just RSVP 👍",
@@ -122,6 +125,16 @@ const messages = {
 
     EDIT_JOIN_LINK_SUCCESS:
       '✅ Updated join link for "{keyword}".',
+
+    // ===== Edit DateTime =====
+    EDIT_DATETIME_USAGE:
+      "Usage:\neditEventDateTime <keyword> <YYYY-MM-DD HH:MM-HH:MM>\n\nExample:\neditEventDateTime kyobashi 2025-03-15 18:00-22:00",
+
+    EDIT_DATETIME_SUCCESS:
+      '✅ Updated date/time for "{keyword}".',
+
+    EDIT_DATETIME_INVALID:
+      "Invalid datetime format. Use YYYY-MM-DD HH:MM-HH:MM, e.g., 2025-03-15 18:00-22:00.",
   },
 
   jp: {
@@ -145,7 +158,7 @@ const messages = {
       "🤖 Event RSVP Bot — 使い方",
 
     COMMANDS_DESCRIPTION:
-      "このボットは、イベントに興味がある人が簡単に参加できるようにするためのものだよ。",
+      "下のメニューにある「イベント一覧」をタップして、開催予定のイベントをチェックしてね！\n\n気になるイベントがあったら「参加」をタップすると、詳細と参加リンクが届くよ。\n\nそのリンクを開けば、そのままLINEグループに参加できます 👍",
 
     COMMANDS_FOR_EVERYONE:
       "📌 みんな向け（ボットにDMしてね）",
@@ -173,6 +186,9 @@ const messages = {
 
     COMMANDS_EDIT_JOIN_LINK:
       "参加リンク編集 <キーワード> <リンク>\n→ 招待リンクを更新",
+
+    COMMANDS_EDIT_DATETIME:
+      "日時編集 <キーワード> <YYYY-MM-DD HH:MM-HH:MM>\n→ イベントの日時を更新\n例:\n日時編集 kyobashi 2025-03-15 18:00-22:00",
 
     COMMANDS_NOTES:
       "・コマンドはすべてDMで送ってね\n・メイングループはスッキリ\n・迷ったら「参加 <キーワード>」を送ってね 👍",
@@ -245,6 +261,16 @@ const messages = {
 
     EDIT_JOIN_LINK_SUCCESS:
       "✅ 招待リンクを更新しました。",
+
+    // ===== Edit DateTime =====
+    EDIT_DATETIME_USAGE:
+      "使い方:\n日時編集 <キーワード> <YYYY-MM-DD HH:MM-HH:MM>\n\n例:\n日時編集 kyobashi 2025-03-15 18:00-22:00",
+
+    EDIT_DATETIME_SUCCESS:
+      "✅ イベントの日時を更新しました。",
+
+    EDIT_DATETIME_INVALID:
+      "日時の形式が正しくありません。YYYY-MM-DD HH:MM-HH:MM を使ってね。例: 2025-03-15 18:00-22:00",
   },
 };
 

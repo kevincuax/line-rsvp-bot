@@ -1,6 +1,7 @@
 const { loadEvents, saveEvents } = require("./eventsStore");
 const { normalize } = require("./text");
 const { t } = require("./i18n");
+const { URLSearchParams } = require("url");
 
 function msg(lang, en, jp) {
   return lang === "jp" ? jp : en;
@@ -15,14 +16,14 @@ function tt(lang, key, vars = {}, fallbackEn = key, fallbackJp = key) {
   return result;
 }
 
+function getBaseUrl() {
+  const raw = (process.env.BASE_URL || "https://nondissolving-adan-geostatic.ngrok-free.dev").trim();
+  return raw.replace(/\/+$/, "");
+}
+
 function findEventByKeyword(keyword, eventsMap) {
   if (!keyword) return null;
   if (eventsMap[keyword]) return { key: keyword, ...eventsMap[keyword] };
-
-  for (const [key, ev] of Object.entries(eventsMap)) {
-    const aliases = (ev.aliases || []).map(normalize);
-    if (aliases.includes(keyword)) return { key, ...ev };
-  }
   return null;
 }
 
@@ -32,6 +33,7 @@ const COMMAND_ALIASES = {
   editeventdesc: ["editeventdesc", "説明編集"],
   editjoinlink: ["editjoinlink", "参加リンク編集", "リンク編集"],
   editeventdatetime: ["editeventdatetime", "日時編集", "日時変更"],
+  editeventlocation: ["editeventlocation", "場所編集", "ロケーション編集"],
   rsvp: ["rsvp", "参加"],
   eventlist: ["eventlist", "一覧", "イベント一覧"],
   details: ["details", "詳細", "説明"],
@@ -57,9 +59,21 @@ function canonicalizeCommand(rawText) {
 /**
  * Router: returns LINE reply messages array, or null to ignore.
  */
-function handleDmText(rawText, { lang = "en", userId } = {}) {
+async function handleDmText(rawText, { lang = "en", userId } = {}) {
   const text = canonicalizeCommand(rawText);
-  const eventsMap = loadEvents();
+  const eventsMap = await loadEvents();
+
+  console.log("eventsMap:", eventsMap);
+console.log("event keys:", Object.keys(eventsMap));
+
+  if (
+    text === "commands" ||
+    text === "command" ||
+    text === "help" ||
+    text === "menu"
+  ) {
+    return commandsHelpMessage({ lang });
+  }
 
   if (text.startsWith("createevent ")) {
     return handleCreateEvent(text, eventsMap, { lang, userId });
@@ -79,6 +93,10 @@ function handleDmText(rawText, { lang = "en", userId } = {}) {
 
   if (text.startsWith("editeventdatetime ")) {
     return handleEditEventDateTime(text, eventsMap, { lang, userId });
+  }
+
+  if (text.startsWith("editeventlocation ")) {
+    return handleEditEventLocation(text, eventsMap, { lang, userId });
   }
 
   if (text.startsWith("rsvp")) {
@@ -116,7 +134,20 @@ function usageEditEventDateTime(lang = "en") {
       "EDIT_DATETIME_USAGE",
       {},
       "Usage:\neditEventDateTime <keyword> <YYYY-MM-DD HH:MM-HH:MM>\n\nExample:\neditEventDateTime kyobashi 2025-03-15 18:00-22:00",
-      "使い方:\neditEventDateTime <キーワード> <YYYY-MM-DD HH:MM-HH:MM>\n\n例:\neditEventDateTime kyobashi 2025-03-15 18:00-22:00"
+      "使い方:\neditEventDateTime <keyword> <YYYY-MM-DD HH:MM-HH:MM>\n\n例:\neditEventDateTime kyobashi 2025-03-15 18:00-22:00"
+    ),
+  }];
+}
+
+function usageEditEventLocation(lang = "en") {
+  return [{
+    type: "text",
+    text: tt(
+      lang,
+      "EDIT_LOCATION_USAGE",
+      {},
+      "Usage:\neditEventLocation <keyword> <location>\n\nExample:\neditEventLocation kyobashi Shinsaibashi",
+      "使い方:\neditEventLocation <キーワード> <場所>\n\n例:\neditEventLocation kyobashi 心斎橋"
     ),
   }];
 }
@@ -130,26 +161,6 @@ function commandsHelpMessage({ lang = "en" } = {}) {
     t(lang, "COMMANDS_TITLE"),
     "",
     t(lang, "COMMANDS_DESCRIPTION"),
-    "",
-    t(lang, "COMMANDS_FOR_EVERYONE"),
-    "",
-    t(lang, "COMMANDS_EVENTLIST"),
-    "",
-    t(lang, "COMMANDS_RSVP"),
-    "",
-    t(lang, "COMMANDS_DESCRIBE"),
-    "",
-    t(lang, "COMMANDS_FOR_ORGANIZERS"),
-    "",
-    t(lang, "COMMANDS_CREATE_EVENT"),
-    "",
-    t(lang, "COMMANDS_EDIT_DESC"),
-    "",
-    t(lang, "COMMANDS_EDIT_DESC_JP"),
-    "",
-    t(lang, "COMMANDS_EDIT_JOIN_LINK"),
-    "",
-    t(lang, "COMMANDS_NOTES"),
   ].join("\n");
 
   return [{ type: "text", text }];
@@ -174,9 +185,8 @@ function handleCreateEvent(rawText, eventsMap, { lang = "en" } = {}) {
     joinLink: "",
     qrOriginal: "",
     qrPreview: "",
-    aliases: [],
-    enabled: true,
     datetime: "",
+    location: "",
   };
 
   saveEvents(eventsMap);
@@ -272,6 +282,34 @@ function handleEditEventDateTime(rawText, eventsMap, { lang = "en" } = {}) {
   }];
 }
 
+function handleEditEventLocation(rawText, eventsMap, { lang = "en" } = {}) {
+  const parts = rawText.trim().split(/\s+/);
+  const keyword = normalize(parts[1] || "");
+  const location = parts.slice(2).join(" ").trim();
+
+  if (!keyword || !location) {
+    return usageEditEventLocation(lang);
+  }
+
+  if (!eventsMap[keyword]) {
+    return [{ type: "text", text: t(lang, "EDIT_EVENT_NOT_FOUND", { keyword }) }];
+  }
+
+  eventsMap[keyword].location = location;
+  saveEvents(eventsMap);
+
+  return [{
+    type: "text",
+    text: tt(
+      lang,
+      "EDIT_LOCATION_SUCCESS",
+      { keyword, location },
+      `✅ Updated location for "${keyword}".`,
+      `✅ 「${keyword}」の場所を更新しました。`
+    ),
+  }];
+}
+
 function handleRsvp(rawText, eventsMap, { lang = "en" } = {}) {
   const text = normalize(rawText);
   const parts = text.split(" ");
@@ -293,31 +331,27 @@ function handleRsvp(rawText, eventsMap, { lang = "en" } = {}) {
 
   const title = ev.title || ev.key;
   const link = ev.joinLink;
-  const baseUrl = process.env.BASE_URL || "http://localhost:3000";
-  const icsUrl = `${baseUrl}/calendar/${encodeURIComponent(ev.key)}`;
   const googleCalendarUrl = buildGoogleCalendarLink(ev);
 
   const joinBlock = link
     ? `${t(lang, "RSVP_JOIN_MESSAGE")}\n${link}\n\n`
     : `${t(lang, "RSVP_JOIN_LINK_NOT_SET")}\n\n`;
 
-  const calendarBlock = ev.datetime
-    ? msg(
-        lang,
-        `Add to Calendar:\n` +
-          (googleCalendarUrl ? `Google Calendar:\n${googleCalendarUrl}\n\n` : "") +
-          `Apple Calendar (.ics):\n${icsUrl}\n\n`,
-        `カレンダーに追加:\n` +
-          (googleCalendarUrl ? `Googleカレンダー:\n${googleCalendarUrl}\n\n` : "") +
-          `Apple Calendar (.ics):\n${icsUrl}\n\n`
-      )
-    : "";
+  const calendarBlock =
+    ev.datetime && googleCalendarUrl
+      ? msg(
+          lang,
+          `Add to Google Calendar:\n${googleCalendarUrl}\n\n`,
+          `Googleカレンダーに追加:\n${googleCalendarUrl}\n\n`
+        )
+      : "";
 
   const messages = [{
     type: "text",
     text:
       `✅ ${title}\n\n` +
-      (ev.datetime ? `📅 ${ev.datetime}\n\n` : "") +
+      (ev.datetime ? `📅 ${ev.datetime}\n` : "") +
+      (ev.location ? `📍 ${ev.location}\n\n` : "\n") +
       joinBlock +
       calendarBlock +
       t(lang, "RSVP_QR_FALLBACK"),
@@ -392,11 +426,12 @@ function handleDetails(rawText, eventsMap, { lang = "en" } = {}) {
       ? (descJp || t(lang, "DESCRIBE_EMPTY"))
       : (descEn || t(lang, "DESCRIBE_EMPTY"));
 
-  const dateStr = ev.datetime ? `📅 ${ev.datetime}\n\n` : "";
+  const dateStr = ev.datetime ? `📅 ${ev.datetime}\n` : "";
+  const locationStr = ev.location ? `📍 ${ev.location}\n\n` : "\n";
 
   return [{
     type: "text",
-    text: `📝 ${title}\n\n${dateStr}${desc}`,
+    text: `📝 ${title}\n\n${dateStr}${locationStr}${desc}`,
   }];
 }
 
@@ -421,10 +456,11 @@ function handleRsvpList(eventsMap, { lang = "en" } = {}) {
           : (ev.desc || ev.descJp || t(lang, "DESCRIBE_EMPTY"));
 
       const datetimeStr = ev.datetime ? `📅 ${ev.datetime}\n` : "";
+      const locationStr = ev.location ? `📍 ${ev.location}\n` : "";
 
       return {
         title: k,
-        text: `${datetimeStr}${desc}`.slice(0, 60),
+        text: `${datetimeStr}${locationStr}${desc}`.slice(0, 60),
         actions: [{
           type: "postback",
           label: msg(lang, "RSVP", "参加"),
@@ -481,7 +517,9 @@ module.exports = {
   handleCreateEvent,
   handleEditEventDesc,
   handleEditEventDateTime,
+  handleEditEventLocation,
   handleRsvp,
+  handleRsvpList,
   commandsHelpMessage,
   languagePromptMessage,
 };

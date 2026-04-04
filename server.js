@@ -3,9 +3,10 @@ require("dotenv").config();
 const express = require("express");
 const line = require("@line/bot-sdk");
 
-const { handleDmText, commandsHelpMessage } = require("./src/commands");
+const { handleDmText, commandsHelpMessage, handleRsvpList } = require("./src/commands");
 const { getUserLang, setUserLang } = require("./src/userPrefsStore");
 const { loadEvents } = require("./src/eventsStore");
+const { loadEventsFromGoogleSheets } = require("./src/googleSheetEvents");
 
 const app = express();
 
@@ -150,23 +151,23 @@ async function handleEvent(event) {
 
     // 1) Language selection
     if (data.startsWith("SET_LANG=")) {
-      const lang = data.split("=")[1]; // "en" or "jp"
-      setUserLang(userId, lang);
+  const lang = data.split("=")[1];
+  setUserLang(userId, lang);
 
-      return {
-        replyToken: event.replyToken,
-        messages: [
-          {
-            type: "text",
-            text:
-              lang === "jp"
-                ? "了解！これから日本語で返信するね 😊"
-                : "Got it! I’ll reply in English 😊",
-          },
-          ...commandsHelpMessage({ lang }),
-        ],
-      };
-    }
+  return {
+    replyToken: event.replyToken,
+    messages: [
+      {
+        type: "text",
+        text:
+          lang === "jp"
+            ? "了解！これから日本語で返信するね 😊\nイベント一覧を送るね。"
+            : "Got it! I’ll reply in English 😊\nHere are the current events.",
+      },
+      ...handleRsvpList(await loadEventsFromGoogleSheets(), { lang, userId }),
+    ],
+  };
+}
 
     // 2) QuickReply / button actions from event list (postbacks)
     //    We reuse your existing router by turning these into normal commands.
@@ -174,7 +175,7 @@ async function handleEvent(event) {
       const keyword = data;
       const lang = getUserLang(userId) || "en";
 
-      const messages = handleDmText(`rsvp ${keyword}`, { lang, userId });
+      const messages = await handleDmText(`rsvp ${keyword}`, { lang, userId });
       return {
         replyToken: event.replyToken,
         messages: messages?.length ? messages : [{ type: "text", text: "OK" }],
@@ -185,7 +186,7 @@ async function handleEvent(event) {
       const keyword = data.replace("RSVP:", "").trim();
       const lang = getUserLang(userId) || "en";
 
-      const messages = handleDmText(`rsvp ${keyword}`, { lang, userId });
+      const messages = await handleDmText(`rsvp ${keyword}`, { lang, userId });
       return {
         replyToken: event.replyToken,
         messages: messages?.length ? messages : [{ type: "text", text: "OK" }],
@@ -211,7 +212,7 @@ async function handleEvent(event) {
     };
   }
 
-  const messages = handleDmText(rawText, { lang, userId });
+  const messages = await handleDmText(rawText, { lang, userId });
   if (!messages || !messages.length) return null;
 
   return {
@@ -220,41 +221,63 @@ async function handleEvent(event) {
   };
 }
 
-app.get('/calendar/:eventKey', (req, res) => {
+app.get('/calendar/:eventKey', async (req, res) => {
   const eventKey = decodeURIComponent(req.params.eventKey);
-  const eventsMap = loadEvents();
+  const eventsMap = await loadEvents();
   const ev = eventsMap[eventKey];
 
   if (!ev || !ev.datetime) {
-    res.status(404).send('Event not found or no datetime set.');
-    return;
+    return res.status(404).send('Event not found or no datetime set.');
   }
 
   const [date, times] = ev.datetime.split(' ');
   if (!times || !times.includes('-')) {
-    res.status(400).send('Invalid datetime format.');
-    return;
+    return res.status(400).send('Invalid datetime format.');
   }
 
   const [start, end] = times.split('-');
-  const dtstart = date.replace(/-/g, '') + 'T' + start.replace(':', '') + '00';
-  const dtend = date.replace(/-/g, '') + 'T' + end.replace(':', '') + '00';
 
-  const summary = ev.title || eventKey;
-  const description = ev.desc || ev.descJp || 'Event details';
+  // Floating local time
+  const dtstart = `${date.replace(/-/g, '')}T${start.replace(':', '')}00`;
+  const dtend = `${date.replace(/-/g, '')}T${end.replace(':', '')}00`;
 
-  const ics = `BEGIN:VCALENDAR
-VERSION:2.0
-BEGIN:VEVENT
-DTSTART:${dtstart}
-DTEND:${dtend}
-SUMMARY:${summary}
-DESCRIPTION:${description}
-END:VEVENT
-END:VCALENDAR`;
+  const summary = (ev.title || eventKey).replace(/\r?\n/g, ' ');
+  const description = (ev.desc || ev.descJp || 'Event details')
+    .replace(/\\/g, '\\\\')
+    .replace(/\r?\n/g, '\\n')
+    .replace(/,/g, '\\,')
+    .replace(/;/g, '\\;');
+  const location = (ev.location || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/\r?\n/g, ' ')
+    .replace(/,/g, '\\,')
+    .replace(/;/g, '\\;');
+
+  const uid = `${eventKey}@kevincua-linebot`;
+  const dtstamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Kevin LINE Bot//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    `UID:${uid}`,
+    `DTSTAMP:${dtstamp}`,
+    `DTSTART:${dtstart}`,
+    `DTEND:${dtend}`,
+    `SUMMARY:${summary}`,
+    `DESCRIPTION:${description}`,
+    ...(location ? [`LOCATION:${location}`] : []),
+    'END:VEVENT',
+    'END:VCALENDAR',
+    ''
+  ].join('\r\n');
 
   res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${eventKey}.ics"`);
+  res.setHeader('Cache-Control', 'no-store');
   res.send(ics);
 });
 

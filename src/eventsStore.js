@@ -1,17 +1,27 @@
-const fs = require("fs");
-const path = require("path");
+require("dotenv").config();
 
-const EVENTS_PATH = path.join(__dirname, "..", "events.json");
+const { loadEventsFromGoogleSheets } = require("./googleSheetEvents");
 
-function loadEvents() {
-  if (!fs.existsSync(EVENTS_PATH)) return {};
-  const raw = fs.readFileSync(EVENTS_PATH, "utf8");
-  return raw.trim() ? JSON.parse(raw) : {};
+let cachedEvents = null;
+let cacheExpiresAt = 0;
+
+async function loadEvents() {
+  const now = Date.now();
+
+  if (cachedEvents && now < cacheExpiresAt) {
+    return cachedEvents;
+  }
+
+  cachedEvents = await loadEventsFromGoogleSheets();
+  cacheExpiresAt = now + 30 * 1000; // 30 sec cache for local testing
+
+  return cachedEvents;
 }
 
-// MVP simple write (safe enough for now)
-function saveEvents(eventsObj) {
-  fs.writeFileSync(EVENTS_PATH, JSON.stringify(eventsObj, null, 2), "utf8");
+function saveEvents(_eventsMap) {
+  // No-op for now.
+  // Google Form / Sheet is the source of truth.
+  return;
 }
 
-module.exports = { loadEvents, saveEvents, EVENTS_PATH };
+module.exports = { loadEvents, saveEvents };
