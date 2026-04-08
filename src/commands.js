@@ -212,8 +212,6 @@ function handleCreateEvent(rawText, eventsMap, { lang = "en" } = {}) {
     desc: "",
     descJp: "",
     joinLink: "",
-    qrOriginal: "",
-    qrPreview: "",
     datetime: "",
     location: "",
   };
@@ -383,20 +381,8 @@ function handleRsvp(rawText, eventsMap, { lang = "en" } = {}) {
       (ev.datetime ? `📅 ${ev.datetime}\n` : "") +
       (ev.location ? `📍 ${ev.location}\n\n` : "\n") +
       joinBlock +
-      calendarBlock +
-      (link ? t(lang, "RSVP_QR_FALLBACK") : ""),
+      calendarBlock,
   }];
-
-  if (link.startsWith("https://")) {
-    const fullQrUrl = `${baseUrl}/qr/full?data=${encodeURIComponent(link)}`;
-    const previewQrUrl = `${baseUrl}/qr/preview?data=${encodeURIComponent(link)}`;
-
-    messages.push({
-      type: "image",
-      originalContentUrl: fullQrUrl,
-      previewImageUrl: previewQrUrl,
-    });
-  }
 
   return messages;
 }

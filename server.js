@@ -17,8 +17,6 @@ const config = {
 
 const client = new line.Client(config);
 
-const QRCode = require("qrcode");
-
 /**
  * Reply safely:
  * - Ignore expired/invalid reply tokens (common / expected)
@@ -229,70 +227,6 @@ async function handleEvent(event) {
 }
 
 
-app.get("/qr", async (req, res) => {
-  try {
-    const data = (req.query.data || "").trim();
-
-    if (!data) {
-      return res.status(400).send("Missing data");
-    }
-
-    const pngBuffer = await QRCode.toBuffer(data, {
-      type: "png",
-      width: 400,
-      margin: 2,
-    });
-
-    res.setHeader("Content-Type", "image/png");
-    res.setHeader("Cache-Control", "public, max-age=300");
-    res.send(pngBuffer);
-  } catch (err) {
-    console.error("QR generation failed:", err);
-    res.status(500).send("Failed to generate QR");
-  }
-});
-
-
-
-app.get("/qr/full", async (req, res) => {
-  try {
-    const data = (req.query.data || "").trim();
-    if (!data) return res.status(400).send("Missing data");
-
-    const buffer = await QRCode.toBuffer(data, {
-      type: "png",
-      width: 600,
-      margin: 2,
-    });
-
-    res.setHeader("Content-Type", "image/png");
-    res.setHeader("Cache-Control", "public, max-age=300");
-    res.send(buffer);
-  } catch (err) {
-    console.error("QR full error:", err);
-    res.status(500).send("QR generation failed");
-  }
-});
-
-app.get("/qr/preview", async (req, res) => {
-  try {
-    const data = (req.query.data || "").trim();
-    if (!data) return res.status(400).send("Missing data");
-
-    const buffer = await QRCode.toBuffer(data, {
-      type: "png",
-      width: 240,
-      margin: 2,
-    });
-
-    res.setHeader("Content-Type", "image/png");
-    res.setHeader("Cache-Control", "public, max-age=300");
-    res.send(buffer);
-  } catch (err) {
-    console.error("QR preview error:", err);
-    res.status(500).send("QR generation failed");
-  }
-});
 app.get('/calendar/:eventKey', async (req, res) => {
   const eventKey = decodeURIComponent(req.params.eventKey);
   const eventsMap = await loadEvents();
