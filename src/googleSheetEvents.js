@@ -57,7 +57,9 @@ async function loadEventsFromGoogleSheets() {
     desc: ["description", "descriptionenglish", "description(english)内容（英語で）", "description(english)内容(英語で)", "description(english)", "description (english)", "内容（英語で）", "内容(英語で)", "description (english)"],
     descJp: ["descriptionjapanese", "description(japanese)　内容（日本語で）", "description(japanese) 内容（日本語で）", "description(japanese)", "description (japanese)", "descriptionjapanese", "内容（日本語で）", "内容(日本語で)", "description japanese"],
     joinLink: ["joinlink", "join link", "join link　参加するリンク", "join link 参加するリンク", "参加するリンク"],
-    qr: ["qr", "qr code", "qr code url"],
+    qr: ["qr", "qr code", "qr code url", "qr url", "qr image", "qrimage"],
+    qrOriginal: ["qroriginal", "qr original", "qr-original", "original qr", "original qr code", "qr original url"],
+    qrPreview: ["qrpreview", "qr preview", "qr-preview", "preview qr", "preview qr code", "qr preview url"],
     datetime: ["datetime", "date time", "date time(for ex: 2025-03-15 18:00-22:00) 日時(例：2025-03-15 18:00-22:00)", "date time(for ex: 2025-03-15 18:00-22:00) 日時(例：2025-03-15 18:00-22:00)", "date time (for ex: 2025-03-15 18:00-22:00)", "location datetime", "日時"],
     location: ["location", "location 場所", "場所"],
   };
@@ -92,13 +94,16 @@ async function loadEventsFromGoogleSheets() {
 
     if (!keyword) continue;
 
+    const qrOriginal = clean(record.qrOriginal || record.qr);
+    const qrPreview = clean(record.qrPreview || record.qr || record.qrOriginal);
+
     eventsMap[keyword] = {
       title: title || keyword,
       desc: clean(record.desc),
       descJp: clean(record.descJp),
       joinLink: clean(record.joinLink),
-      qrOriginal: clean(record.qr),
-      qrPreview: clean(record.qr),
+      qrOriginal,
+      qrPreview,
       datetime: clean(record.datetime),
       location: clean(record.location),
     };

@@ -156,6 +156,27 @@ function helpMessage({ lang = "en" } = {}) {
   return [{ type: "text", text: t(lang, "UNKNOWN_COMMAND") }];
 }
 
+function menuQuickReplyItems(lang = "en") {
+  return [
+    {
+      type: "action",
+      action: {
+        type: "message",
+        label: msg(lang, "Events", "イベント一覧"),
+        text: "eventlist",
+      },
+    },
+    {
+      type: "action",
+      action: {
+        type: "message",
+        label: msg(lang, "Help", "ヘルプ"),
+        text: "commands",
+      },
+    },
+  ];
+}
+
 function commandsHelpMessage({ lang = "en" } = {}) {
   const text = [
     t(lang, "COMMANDS_TITLE"),
@@ -163,7 +184,15 @@ function commandsHelpMessage({ lang = "en" } = {}) {
     t(lang, "COMMANDS_DESCRIPTION"),
   ].join("\n");
 
-  return [{ type: "text", text }];
+  return [
+    {
+      type: "text",
+      text,
+      quickReply: {
+        items: menuQuickReplyItems(lang),
+      },
+    },
+  ];
 }
 
 function handleCreateEvent(rawText, eventsMap, { lang = "en" } = {}) {
@@ -330,8 +359,9 @@ function handleRsvp(rawText, eventsMap, { lang = "en" } = {}) {
   }
 
   const title = ev.title || ev.key;
-  const link = ev.joinLink;
+  const link = (ev.joinLink || "").trim();
   const googleCalendarUrl = buildGoogleCalendarLink(ev);
+  const baseUrl = getBaseUrl();
 
   const joinBlock = link
     ? `${t(lang, "RSVP_JOIN_MESSAGE")}\n${link}\n\n`
@@ -354,20 +384,17 @@ function handleRsvp(rawText, eventsMap, { lang = "en" } = {}) {
       (ev.location ? `📍 ${ev.location}\n\n` : "\n") +
       joinBlock +
       calendarBlock +
-      t(lang, "RSVP_QR_FALLBACK"),
+      (link ? t(lang, "RSVP_QR_FALLBACK") : ""),
   }];
 
-  const hasQr =
-    ev.qrOriginal &&
-    ev.qrPreview &&
-    ev.qrOriginal.startsWith("https://") &&
-    ev.qrPreview.startsWith("https://");
+  if (link.startsWith("https://")) {
+    const fullQrUrl = `${baseUrl}/qr/full?data=${encodeURIComponent(link)}`;
+    const previewQrUrl = `${baseUrl}/qr/preview?data=${encodeURIComponent(link)}`;
 
-  if (hasQr) {
     messages.push({
       type: "image",
-      originalContentUrl: ev.qrOriginal,
-      previewImageUrl: ev.qrPreview,
+      originalContentUrl: fullQrUrl,
+      previewImageUrl: previewQrUrl,
     });
   }
 
@@ -458,14 +485,18 @@ function handleRsvpList(eventsMap, { lang = "en" } = {}) {
       const datetimeStr = ev.datetime ? `📅 ${ev.datetime}\n` : "";
       const locationStr = ev.location ? `📍 ${ev.location}\n` : "";
 
-      return {
-        title: k,
-        text: `${datetimeStr}${locationStr}${desc}`.slice(0, 60),
-        actions: [{
+      const actions = [
+        {
           type: "postback",
           label: msg(lang, "RSVP", "参加"),
           data: k,
-        }],
+        },
+      ];
+
+      return {
+        title: k,
+        text: `${datetimeStr}${locationStr}${desc}`.slice(0, 60),
+        actions,
       };
     });
 
