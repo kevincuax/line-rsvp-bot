@@ -87,22 +87,15 @@ function languagePromptMessage() {
 /**
  * Webhook
  */
-app.post("/webhook", line.middleware(config), async (req, res) => {
+app.post("/webhook", async (req, res) => {
   try {
     console.log("received request");
-
-    const events = req.body.events || [];
-    for (const event of events) {
-      const result = await handleEvent(event);
-      if (result?.replyToken && result?.messages?.length) {
-        await safeReply(result.replyToken, result.messages);
-      }
-    }
-
-    res.sendStatus(200);
+    console.log("headers:", req.headers);
+    console.log("body:", req.body);
+    res.status(200).send("ok");
   } catch (err) {
-    console.error("Webhook error:", err?.originalError?.response?.data || err);
-    res.sendStatus(500);
+    console.error("webhook error:", err);
+    res.status(500).send("error");
   }
 });
 
