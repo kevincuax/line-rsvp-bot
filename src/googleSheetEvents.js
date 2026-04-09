@@ -27,13 +27,21 @@ async function loadEventsFromGoogleSheets() {
   const rawStartsWithQuote = rawPrivateKey.startsWith('"');
   const rawEndsWithQuote = rawPrivateKey.endsWith('"');
 
-  const normalizedPrivateKey = rawPrivateKey
+  let normalizedPrivateKey = rawPrivateKey
     .replace(/^"|"$/g, "")
     .replace(/\\n/g, "\n")
     .replace(/\r/g, "")
     .trim();
 
-  const keyLooksLikePem = normalizedPrivateKey.startsWith("-----BEGIN ") && normalizedPrivateKey.endsWith("-----END PRIVATE KEY-----");
+  // Recover from key strings where escaped newlines were stripped and left
+  // a literal "n" after the PEM header/footer.
+  if (!normalizedPrivateKey.includes("\n")) {
+    normalizedPrivateKey = normalizedPrivateKey
+      .replace(/-----BEGIN PRIVATE KEY-----n/, "-----BEGIN PRIVATE KEY-----\n")
+      .replace(/n-----END PRIVATE KEY-----$/, "\n-----END PRIVATE KEY-----");
+  }
+
+  const keyLooksLikePem = normalizedPrivateKey.startsWith("-----BEGIN ") && normalizedPrivateKey.includes("-----END PRIVATE KEY-----");
   if (!keyLooksLikePem) {
     console.error("GOOGLE_PRIVATE_KEY is malformed or unsupported in production env.", {
       rawStartsWithQuote,
