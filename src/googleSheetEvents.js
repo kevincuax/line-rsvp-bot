@@ -33,11 +33,12 @@ async function loadEventsFromGoogleSheets() {
     .replace(/\r/g, "")
     .trim();
 
-  // Recover from key strings where escaped newlines were stripped and left
-  // a literal "n" after the PEM header/footer.
-  if (!normalizedPrivateKey.includes("\n")) {
+  // If the key is stored as a single line with "n" markers instead of newlines,
+  // restore the PEM boundary separators and allow the base64 block to remain.
+  if (!normalizedPrivateKey.includes("\n") && normalizedPrivateKey.includes("-----BEGIN PRIVATE KEY-----")) {
     normalizedPrivateKey = normalizedPrivateKey
       .replace(/-----BEGIN PRIVATE KEY-----n/, "-----BEGIN PRIVATE KEY-----\n")
+      .replace(/n-----END PRIVATE KEY-----n$/, "\n-----END PRIVATE KEY-----\n")
       .replace(/n-----END PRIVATE KEY-----$/, "\n-----END PRIVATE KEY-----");
   }
 
