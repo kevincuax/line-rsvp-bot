@@ -21,7 +21,13 @@ async function loadEventsFromGoogleSheets() {
   if (!sheetId) throw new Error("Missing GOOGLE_SHEET_ID");
   if (!sheetName) throw new Error("Missing GOOGLE_SHEET_NAME");
 
-  const normalizedPrivateKey = privateKey
+  const rawPrivateKey = privateKey;
+  const rawHasLiteralEscapedNewlines = rawPrivateKey.includes("\\n");
+  const rawHasActualNewlines = rawPrivateKey.includes("\n");
+  const rawStartsWithQuote = rawPrivateKey.startsWith('"');
+  const rawEndsWithQuote = rawPrivateKey.endsWith('"');
+
+  const normalizedPrivateKey = rawPrivateKey
     .replace(/^"|"$/g, "")
     .replace(/\\n/g, "\n")
     .replace(/\r/g, "")
@@ -30,8 +36,12 @@ async function loadEventsFromGoogleSheets() {
   const keyLooksLikePem = normalizedPrivateKey.startsWith("-----BEGIN ") && normalizedPrivateKey.endsWith("-----END PRIVATE KEY-----");
   if (!keyLooksLikePem) {
     console.error("GOOGLE_PRIVATE_KEY is malformed or unsupported in production env.", {
-      startsWithBegin: normalizedPrivateKey.startsWith("-----BEGIN "),
-      endsWithEnd: normalizedPrivateKey.endsWith("-----END PRIVATE KEY-----"),
+      rawStartsWithQuote,
+      rawEndsWithQuote,
+      rawHasLiteralEscapedNewlines,
+      rawHasActualNewlines,
+      normalizedStartsWith: normalizedPrivateKey.slice(0, 30),
+      normalizedEndsWith: normalizedPrivateKey.slice(-30),
       length: normalizedPrivateKey.length,
     });
   }
