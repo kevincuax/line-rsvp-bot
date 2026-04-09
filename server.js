@@ -97,6 +97,7 @@ app.post(
   async (req, res) => {
     try {
       console.log("received request");
+      console.log("events length:", req.body?.events?.length || 0);
 
       const events = req.body.events || [];
       for (const event of events) {
@@ -113,6 +114,11 @@ app.post(
     }
   }
 );
+
+app.use((err, req, res, next) => {
+  console.error("Express error middleware caught:", err);
+  res.status(500).send("webhook middleware error");
+});
 
 // Put this AFTER your routes
 app.use((err, req, res, next) => {
