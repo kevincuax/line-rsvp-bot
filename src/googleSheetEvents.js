@@ -24,7 +24,12 @@ async function loadEventsFromGoogleSheets() {
   const normalizedPrivateKey = privateKey
     .replace(/^"|"$/g, "")
     .replace(/\\n/g, "\n")
+    .replace(/\r/g, "")
     .trim();
+
+  if (!normalizedPrivateKey.startsWith("-----BEGIN ")) {
+    console.warn("GOOGLE_PRIVATE_KEY may be malformed in production env");
+  }
 
   const auth = new google.auth.GoogleAuth({
     credentials: {
