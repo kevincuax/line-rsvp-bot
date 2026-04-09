@@ -38,8 +38,9 @@ async function loadEventsFromGoogleSheets() {
   if (!normalizedPrivateKey.includes("\n") && normalizedPrivateKey.includes("-----BEGIN PRIVATE KEY-----")) {
     normalizedPrivateKey = normalizedPrivateKey
       .replace(/-----BEGIN PRIVATE KEY-----n/, "-----BEGIN PRIVATE KEY-----\n")
-      .replace(/n-----END PRIVATE KEY-----n$/, "\n-----END PRIVATE KEY-----\n")
-      .replace(/n-----END PRIVATE KEY-----$/, "\n-----END PRIVATE KEY-----");
+      .replace(/n-----END PRIVATE KEY-----n/g, "\n-----END PRIVATE KEY-----\n")
+      .replace(/n-----END PRIVATE KEY-----/g, "\n-----END PRIVATE KEY-----")
+      .replace(/\n+$/, "\n");
   }
 
   const keyLooksLikePem = normalizedPrivateKey.startsWith("-----BEGIN ") && normalizedPrivateKey.includes("-----END PRIVATE KEY-----");
