@@ -27,17 +27,28 @@ async function loadEventsFromGoogleSheets() {
     .replace(/\r/g, "")
     .trim();
 
-  if (!normalizedPrivateKey.startsWith("-----BEGIN ")) {
-    console.warn("GOOGLE_PRIVATE_KEY may be malformed in production env");
+  const keyLooksLikePem = normalizedPrivateKey.startsWith("-----BEGIN ") && normalizedPrivateKey.endsWith("-----END PRIVATE KEY-----");
+  if (!keyLooksLikePem) {
+    console.error("GOOGLE_PRIVATE_KEY is malformed or unsupported in production env.", {
+      startsWithBegin: normalizedPrivateKey.startsWith("-----BEGIN "),
+      endsWithEnd: normalizedPrivateKey.endsWith("-----END PRIVATE KEY-----"),
+      length: normalizedPrivateKey.length,
+    });
   }
 
-  const auth = new google.auth.GoogleAuth({
-    credentials: {
-      client_email: serviceAccountEmail,
-      private_key: normalizedPrivateKey,
-    },
-    scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
-  });
+  let auth;
+  try {
+    auth = new google.auth.GoogleAuth({
+      credentials: {
+        client_email: serviceAccountEmail,
+        private_key: normalizedPrivateKey,
+      },
+      scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
+    });
+  } catch (err) {
+    console.error("GoogleAuth initialization failed", err);
+    throw err;
+  }
 
   const client = await auth.getClient();
   const sheets = google.sheets({ version: "v4", auth: client });
