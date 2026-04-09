@@ -12,9 +12,9 @@ function toKeyword(value) {
 
 async function loadEventsFromGoogleSheets() {
   const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const base64PrivateKey = process.env.GOOGLE_PRIVATE_KEY_B64 || process.env.GOOGLE_PRIVATE_KEY_BASE64;
+  const base64PrivateKey = (process.env.GOOGLE_PRIVATE_KEY_B64 || process.env.GOOGLE_PRIVATE_KEY_BASE64 || "").trim();
   const rawPrivateKey = base64PrivateKey
-    ? Buffer.from(base64PrivateKey, "base64").toString("utf8")
+    ? Buffer.from(base64PrivateKey, "base64").toString("utf8").replace(/\r/g, "")
     : process.env.GOOGLE_PRIVATE_KEY;
   const sheetId = process.env.GOOGLE_SHEET_ID;
   const sheetName = process.env.GOOGLE_SHEET_NAME;
@@ -24,6 +24,7 @@ async function loadEventsFromGoogleSheets() {
   if (!sheetId) throw new Error("Missing GOOGLE_SHEET_ID");
   if (!sheetName) throw new Error("Missing GOOGLE_SHEET_NAME");
 
+  console.log("GOOGLE key source:", base64PrivateKey ? "B64" : "raw", "length:", rawPrivateKey.length);
   const rawHasLiteralEscapedNewlines = rawPrivateKey.includes("\\n");
   const rawHasActualNewlines = rawPrivateKey.includes("\n");
   const rawStartsWithQuote = rawPrivateKey.startsWith('"');
