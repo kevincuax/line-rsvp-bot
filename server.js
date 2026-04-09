@@ -105,11 +105,15 @@ app.post(
   async (req, res) => {
     try {
       console.log("received request");
-      const events = req.body.events || [];
+      const events = Array.isArray(req.body.events) ? req.body.events : [];
+      console.log("webhook events count:", events.length);
+      console.log("webhook events:", JSON.stringify(events, null, 2));
 
       await Promise.all(
         events.map(async (event) => {
+          console.log("processing event:", event.type, event.source?.type, event.message?.type, event.postback?.data);
           const response = await handleEvent(event);
+          console.log("event handler response:", response);
           if (response) {
             await safeReply(response.replyToken, response.messages);
           }
