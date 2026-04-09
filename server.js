@@ -105,6 +105,17 @@ app.post(
   async (req, res) => {
     try {
       console.log("received request");
+      const events = req.body.events || [];
+
+      await Promise.all(
+        events.map(async (event) => {
+          const response = await handleEvent(event);
+          if (response) {
+            await safeReply(response.replyToken, response.messages);
+          }
+        })
+      );
+
       res.sendStatus(200);
     } catch (err) {
       console.error("Webhook handler error:", err);
