@@ -17,6 +17,14 @@ const config = {
 
 const client = new line.Client(config);
 
+console.log('env', {
+  LINE_CHANNEL_SECRET: !!process.env.LINE_CHANNEL_SECRET,
+  GOOGLE_SERVICE_ACCOUNT_EMAIL: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.slice(0, 10),
+  GOOGLE_PRIVATE_KEY_len: process.env.GOOGLE_PRIVATE_KEY?.length,
+  GOOGLE_SHEET_ID: process.env.GOOGLE_SHEET_ID,
+  GOOGLE_SHEET_NAME: process.env.GOOGLE_SHEET_NAME,
+});
+
 /**
  * Reply safely:
  * - Ignore expired/invalid reply tokens (common / expected)
@@ -96,6 +104,13 @@ app.post(
   line.middleware(config),
   async (req, res) => {
     try {
+      console.log('env', {
+  LINE_CHANNEL_SECRET: !!process.env.LINE_CHANNEL_SECRET,
+  GOOGLE_SERVICE_ACCOUNT_EMAIL: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.slice(0, 10),
+  GOOGLE_PRIVATE_KEY_len: process.env.GOOGLE_PRIVATE_KEY?.length,
+  GOOGLE_SHEET_ID: process.env.GOOGLE_SHEET_ID,
+  GOOGLE_SHEET_NAME: process.env.GOOGLE_SHEET_NAME,
+});
       console.log("received request");
       console.log("events length:", req.body?.events?.length || 0);
 
@@ -127,6 +142,13 @@ app.use((err, req, res, next) => {
 });
 
 app.get("/health", (req, res) => {
+  console.log('env', {
+  LINE_CHANNEL_SECRET: !!process.env.LINE_CHANNEL_SECRET,
+  GOOGLE_SERVICE_ACCOUNT_EMAIL: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.slice(0, 10),
+  GOOGLE_PRIVATE_KEY_len: process.env.GOOGLE_PRIVATE_KEY?.length,
+  GOOGLE_SHEET_ID: process.env.GOOGLE_SHEET_ID,
+  GOOGLE_SHEET_NAME: process.env.GOOGLE_SHEET_NAME,
+});
   console.log("health hit");
   res.status(200).send("ok");
 });
