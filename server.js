@@ -104,27 +104,10 @@ app.post(
   line.middleware(config),
   async (req, res) => {
     try {
-      console.log('env', {
-  LINE_CHANNEL_SECRET: !!process.env.LINE_CHANNEL_SECRET,
-  GOOGLE_SERVICE_ACCOUNT_EMAIL: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.slice(0, 10),
-  GOOGLE_PRIVATE_KEY_len: process.env.GOOGLE_PRIVATE_KEY?.length,
-  GOOGLE_SHEET_ID: process.env.GOOGLE_SHEET_ID,
-  GOOGLE_SHEET_NAME: process.env.GOOGLE_SHEET_NAME,
-});
       console.log("received request");
-      console.log("events length:", req.body?.events?.length || 0);
-
-      const events = req.body.events || [];
-      for (const event of events) {
-        const result = await handleEvent(event);
-        if (result?.replyToken && result?.messages?.length) {
-          await safeReply(result.replyToken, result.messages);
-        }
-      }
-
       res.sendStatus(200);
     } catch (err) {
-      console.error("Webhook handler error:", err?.originalError?.response?.data || err);
+      console.error("Webhook handler error:", err);
       res.sendStatus(500);
     }
   }
@@ -132,7 +115,7 @@ app.post(
 
 app.use((err, req, res, next) => {
   console.error("Express error middleware caught:", err);
-  res.status(500).send("webhook middleware error");
+  res.status(err?.status || 500).send("webhook middleware error");
 });
 
 // Put this AFTER your routes
